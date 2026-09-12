@@ -29,7 +29,9 @@ Mail/
 │   └── Packages/com.setsuodu.mail/   # Unity UPM 包
 ├── server/src/Mail.Server.Api/       # .NET 10 API（AOT）
 ├── shared/openapi.yaml               # 协议唯一事实来源
-├── deploy/docker-compose.example.yml
+├── docker-compose.yml                # 本地：Dockerfile build
+├── docker-compose.prod.yml           # 生产：GHCR image
+├── .env.example
 ├── docs/
 └── .github/workflows/
 ```
@@ -47,7 +49,7 @@ Mail/
 | POST | `/api/v1/inbox/{id}/read` | Bearer JWT | 标记已读 |
 | POST | `/api/v1/inbox/{id}/claim` | Bearer JWT | 领取附件 |
 | DELETE | `/api/v1/inbox/{id}` | Bearer JWT | 删除邮件 |
-| POST | `/api/v1/admin/mails` | X-Admin-Api-Key | GM/运营发信（单发/群发/全服） |
+| POST | `/api/v1/admin/mails` | X-Admin-Api-Key | GM/运营发信（单发/群发） |
 | GET | `/api/v1/admin/mails` | X-Admin-Api-Key | 管理端列表查询 |
 | GET | `/api/v1/admin/mails/{id}` | X-Admin-Api-Key | 管理端详情 |
 
@@ -63,9 +65,9 @@ Mail/
 
 | 场景 | 命令 |
 |------|------|
-| Compose 只跑迁移 | `cd server && docker compose run --rm mail-migrate` |
+| Compose 只跑迁移 | `docker compose run --rm mail-migrate` |
 | 本地无 Docker | `dotnet run --project server/src/Mail.Server.Api -- --migrate` |
-| 正常启动 | 启动时自动 DbUp（单副本）；多副本请拆独立 Job |
+| 正常启动 | compose 先 `mail-migrate` 再起 API |
 
 ---
 
@@ -81,6 +83,20 @@ Mail/
 
 ## 快速开始（服务端本地）
 
+**Docker Desktop（推荐，仓库根目录）：**
+
+```bash
+cp .env.example .env
+docker compose up --build
+# → http://localhost:12081/health
+```
+
+- `docker-compose.yml`：本地 **build Dockerfile**
+- `docker-compose.prod.yml`：生产拉 **GHCR image**（`MAIL_IMAGE`）
+- 密钥与端口统一写在 **`.env`**（见 `.env.example`）
+
+无 Docker 时：
+
 ```bash
 # 需要 .NET 10 SDK + PostgreSQL
 export ConnectionStrings__Postgres="Host=localhost;Port=5432;Database=mail;Username=mail;Password=mail"
@@ -90,12 +106,6 @@ export Auth__JwtSecret=your-shared-jwt-secret-with-mp
 cd server
 dotnet run --project src/Mail.Server.Api
 # → http://localhost:8080/health
-```
-
-或使用示例 Compose（替换镜像名与密钥）：
-
-```bash
-docker compose -f deploy/docker-compose.example.yml up
 ```
 
 ## 客户端接入

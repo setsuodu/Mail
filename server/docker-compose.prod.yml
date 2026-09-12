@@ -1,0 +1,59 @@
+# Production: pull GHCR image (no local build)
+# Usage (from Mail/server):
+#   cp .env.example .env
+#   docker compose -f docker-compose.prod.yml up -d
+
+name: mail
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mail}
+      POSTGRES_DB: ${POSTGRES_DB:-mail}
+    volumes:
+      - mail_pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-12033}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mail}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mail-migrate:
+    image: ${MAIL_IMAGE:-ghcr.io/longlonggames/mail-server:latest}
+    command: ["--migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - ConnectionStrings__Postgres=${ConnectionStrings__Postgres:-Host=db;Port=5432;Database=mail;Username=mail;Password=mail}
+      - RUN_MIGRATION_ONLY=true
+
+  mail-server:
+    image: ${MAIL_IMAGE:-ghcr.io/longlonggames/mail-server:latest}
+    depends_on:
+      db:
+        condition: service_healthy
+      mail-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      - ConnectionStrings__Postgres=${ConnectionStrings__Postgres:-Host=db;Port=5432;Database=mail;Username=mail;Password=mail}
+      - Auth__AdminApiKey=${AUTH_ADMIN_API_KEY}
+      - Auth__JwtSecret=${AUTH_JWT_SECRET}
+      - DefaultProjectId=${DEFAULT_PROJECT_ID:-default}
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "${MAIL_HOST_PORT:-12081}:8080"
+    restart: unless-stopped
+
+volumes:
+  mail_pgdata:

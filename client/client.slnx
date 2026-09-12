@@ -1,0 +1,4 @@
+﻿<Solution>
+  <Project Path="Setsuodu.Mail.csproj" />
+  <Project Path="Setsuodu.Mail.Editor.csproj" />
+</Solution>

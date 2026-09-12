@@ -1,0 +1,63 @@
+# Local / Docker Desktop: build from Dockerfile
+# Usage (from this directory: Mail/server):
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Build context is repo root (..) because Dockerfile COPY paths are server/src/...
+
+name: mail
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mail}
+      POSTGRES_DB: ${POSTGRES_DB:-mail}
+    volumes:
+      - mail_pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-12033}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mail}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mail-migrate:
+    build:
+      context: ..
+      dockerfile: server/src/Mail.Server.Api/Dockerfile
+    command: ["--migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - ConnectionStrings__Postgres=${ConnectionStrings__Postgres:-Host=db;Port=5432;Database=mail;Username=mail;Password=mail}
+      - RUN_MIGRATION_ONLY=true
+
+  mail-server:
+    build:
+      context: ..
+      dockerfile: server/src/Mail.Server.Api/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      mail-migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      - ConnectionStrings__Postgres=${ConnectionStrings__Postgres:-Host=db;Port=5432;Database=mail;Username=mail;Password=mail}
+      - Auth__AdminApiKey=${AUTH_ADMIN_API_KEY:-change-me-admin}
+      - Auth__JwtSecret=${AUTH_JWT_SECRET:-change-me-shared-with-mp}
+      - DefaultProjectId=${DEFAULT_PROJECT_ID:-default}
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "${MAIL_HOST_PORT:-12081}:8080"
+
+volumes:
+  mail_pgdata:
