@@ -15,6 +15,8 @@ namespace Mail.Server.Api.Json;
 [JsonSerializable(typeof(List<AdminMailSummary>))]
 [JsonSerializable(typeof(AdminMailDetail))]
 [JsonSerializable(typeof(AdminMailListResponse))]
+[JsonSerializable(typeof(ErrorResponse))]
+[JsonSerializable(typeof(JwtPayloadLite))]
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 public partial class AppJsonContext : JsonSerializerContext

@@ -1,4 +1,5 @@
 using Mail.Server.Api.Auth;
+using Mail.Server.Api.Json;
 using Mail.Server.Api.Models;
 using Mail.Server.Api.Storage;
 
@@ -77,7 +78,7 @@ public static class PlayerEndpoints
         {
             // Distinguish not found vs expired is simplified: store returns null for both;
             // re-check existence if needed. For v1 return 404.
-            return Results.NotFound(new { error = "mail not found or expired" });
+            return Results.Json(new ErrorResponse { Error = "mail not found or expired" }, AppJsonContext.Default.ErrorResponse, statusCode: StatusCodes.Status404NotFound);
         }
 
         return Results.Ok(result);

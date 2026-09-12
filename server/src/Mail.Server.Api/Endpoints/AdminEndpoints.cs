@@ -1,4 +1,5 @@
 using Mail.Server.Api.Auth;
+using Mail.Server.Api.Json;
 using Mail.Server.Api.Models;
 using Mail.Server.Api.Storage;
 
@@ -29,12 +30,12 @@ public static class AdminEndpoints
             string.IsNullOrWhiteSpace(body.Title) ||
             string.IsNullOrWhiteSpace(body.Content))
         {
-            return Results.BadRequest(new { error = "projectId, title, content are required" });
+            return Results.Json(new ErrorResponse { Error = "projectId, title, content are required" }, AppJsonContext.Default.ErrorResponse, statusCode: StatusCodes.Status400BadRequest);
         }
 
         if (body.TargetUserIds is null || body.TargetUserIds.Count == 0)
         {
-            return Results.BadRequest(new { error = "targetUserIds required in v1 (explicit fan-out)" });
+            return Results.Json(new ErrorResponse { Error = "targetUserIds required in v1 (explicit fan-out)" }, AppJsonContext.Default.ErrorResponse, statusCode: StatusCodes.Status400BadRequest);
         }
 
         var summary = await store.CreateMailAsync(body, createdBy: "admin", http.RequestAborted);

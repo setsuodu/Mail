@@ -42,6 +42,22 @@ if (migrateOnly)
     return;
 }
 
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine("[Mail] Unhandled: " + ex);
+        ctx.Response.StatusCode = 500;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync("{\"error\":\"" + ex.GetType().Name + ": " +
+            ex.Message.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"}");
+    }
+});
+
 app.MapGet("/health", () => Results.Ok(new HealthResponse { Status = "ok" }));
 
 app.MapPlayerEndpoints();

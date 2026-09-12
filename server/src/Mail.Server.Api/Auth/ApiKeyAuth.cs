@@ -1,3 +1,6 @@
+using Mail.Server.Api.Json;
+using Mail.Server.Api.Models;
+
 namespace Mail.Server.Api.Auth;
 
 public static class ApiKeyAuth
@@ -14,5 +17,8 @@ public static class ApiKeyAuth
     }
 
     public static IResult Unauthorized() =>
-        Results.Json(new { error = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+        Results.Json(
+            new ErrorResponse { Error = "unauthorized" },
+            AppJsonContext.Default.ErrorResponse,
+            statusCode: StatusCodes.Status401Unauthorized);
 }

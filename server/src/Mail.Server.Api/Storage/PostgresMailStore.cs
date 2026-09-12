@@ -37,7 +37,7 @@ public sealed class PostgresMailStore : IMailStore
 
         await using var listCmd = conn.CreateCommand();
         listCmd.CommandText = $"""
-            SELECT um.id, um.mail_id, m.title, m.content, m.attachments,
+            SELECT um.id, um.mail_id, m.title, m.content, m.attachments::text,
                    um.is_read, um.is_claimed, m.expire_at, um.created_at, um.claimed_at
             FROM user_mails um
             INNER JOIN mails m ON m.id = um.mail_id
@@ -84,7 +84,7 @@ public sealed class PostgresMailStore : IMailStore
         await using var select = conn.CreateCommand();
         select.Transaction = tx;
         select.CommandText = """
-            SELECT um.id, um.is_claimed, um.claimed_at, m.attachments, m.expire_at
+            SELECT um.id, um.is_claimed, um.claimed_at, m.attachments::text, m.expire_at
             FROM user_mails um
             INNER JOIN mails m ON m.id = um.mail_id
             WHERE um.id = @id AND um.project_id = @project_id AND um.user_id = @user_id AND um.is_deleted = FALSE
@@ -104,8 +104,8 @@ public sealed class PostgresMailStore : IMailStore
 
         var isClaimed = reader.GetBoolean(1);
         var claimedAt = reader.IsDBNull(2) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(2);
-        var attachmentsJson = reader.GetString(3);
-        var expireAt = reader.IsDBNull(4) ? (DateTimeOffset?)null : reader.GetFieldValue<DateTimeOffset>(4);
+        var attachmentsJson = ReadText(reader, 3);
+        var expireAt = ReadDto(reader, 4);
         await reader.CloseAsync();
 
         if (expireAt is { } exp && exp <= DateTimeOffset.UtcNow)
@@ -272,7 +272,7 @@ public sealed class PostgresMailStore : IMailStore
         await using var conn = await _ds.OpenConnectionAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            SELECT id, project_id, title, content, attachments, created_at, expire_at, sender_name
+            SELECT id, project_id, title, content, attachments::text, created_at, expire_at, sender_name
             FROM mails WHERE id = @id
             """;
         cmd.Parameters.AddWithValue("id", mailId);
@@ -287,9 +287,9 @@ public sealed class PostgresMailStore : IMailStore
             ProjectId = reader.GetString(1),
             Title = reader.GetString(2),
             Content = reader.GetString(3),
-            Attachments = DeserializeAttachments(reader.GetString(4)),
-            CreatedAt = reader.GetFieldValue<DateTimeOffset>(5),
-            ExpireAt = reader.IsDBNull(6) ? null : reader.GetFieldValue<DateTimeOffset>(6),
+            Attachments = DeserializeAttachments(ReadText(reader, 4)),
+            CreatedAt = ReadDto(reader, 5) ?? DateTimeOffset.UtcNow,
+            ExpireAt = ReadDto(reader, 6),
             SenderName = reader.IsDBNull(7) ? null : reader.GetString(7)
         };
         await reader.CloseAsync();
@@ -312,7 +312,7 @@ public sealed class PostgresMailStore : IMailStore
     {
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            SELECT um.id, um.mail_id, m.title, m.content, m.attachments,
+            SELECT um.id, um.mail_id, m.title, m.content, m.attachments::text,
                    um.is_read, um.is_claimed, m.expire_at, um.created_at, um.claimed_at
             FROM user_mails um
             INNER JOIN mails m ON m.id = um.mail_id
@@ -335,12 +335,33 @@ public sealed class PostgresMailStore : IMailStore
             MailId = reader.GetGuid(1),
             Title = reader.GetString(2),
             Content = reader.GetString(3),
-            Attachments = DeserializeAttachments(reader.GetString(4)),
+            Attachments = DeserializeAttachments(ReadText(reader, 4)),
             IsRead = reader.GetBoolean(5),
             IsClaimed = reader.GetBoolean(6),
-            ExpireAt = reader.IsDBNull(7) ? null : reader.GetFieldValue<DateTimeOffset>(7),
-            CreatedAt = reader.GetFieldValue<DateTimeOffset>(8),
-            ClaimedAt = reader.IsDBNull(9) ? null : reader.GetFieldValue<DateTimeOffset>(9)
+            ExpireAt = ReadDto(reader, 7),
+            CreatedAt = ReadDto(reader, 8) ?? DateTimeOffset.UtcNow,
+            ClaimedAt = ReadDto(reader, 9)
+        };
+    }
+
+    private static string ReadText(NpgsqlDataReader reader, int ordinal)
+    {
+        if (reader.IsDBNull(ordinal)) return "[]";
+        var v = reader.GetValue(ordinal);
+        return v as string ?? v.ToString() ?? "[]";
+    }
+
+    private static DateTimeOffset? ReadDto(NpgsqlDataReader reader, int ordinal)
+    {
+        if (reader.IsDBNull(ordinal)) return null;
+        var v = reader.GetValue(ordinal);
+        return v switch
+        {
+            DateTimeOffset dto => dto,
+            DateTime dt => dt.Kind == DateTimeKind.Unspecified
+                ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
+                : new DateTimeOffset(dt),
+            _ => DateTimeOffset.Parse(v.ToString()!)
         };
     }
 
@@ -348,6 +369,13 @@ public sealed class PostgresMailStore : IMailStore
     {
         if (string.IsNullOrWhiteSpace(json) || json == "[]")
             return [];
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.ListMailAttachment) ?? [];
+        try
+        {
+            return JsonSerializer.Deserialize(json, AppJsonContext.Default.ListMailAttachment) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
     }
 }
