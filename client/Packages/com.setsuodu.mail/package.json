@@ -5,9 +5,9 @@
   "description": "In-game mail / compensation client for Unity. Fetch inbox, mark read, claim attachments, delete.",
   "unity": "2022.3",
   "unityRelease": "0f1",
-  "documentationUrl": "https://github.com/setsuodu/mail/blob/main/client/packages/com.setsuodu.mail/README.md",
-  "changelogUrl": "https://github.com/setsuodu/mail/blob/main/client/packages/com.setsuodu.mail/CHANGELOG.md",
-  "licensesUrl": "https://github.com/setsuodu/mail/blob/main/client/packages/com.setsuodu.mail/LICENSE",
+  "documentationUrl": "https://github.com/setsuodu/Mail/blob/main/client/Packages/com.setsuodu.mail/README.md",
+  "changelogUrl": "https://github.com/setsuodu/Mail/blob/main/client/Packages/com.setsuodu.mail/CHANGELOG.md",
+  "licensesUrl": "https://github.com/setsuodu/Mail/blob/main/client/Packages/com.setsuodu.mail/LICENSE",
   "license": "MIT",
   "keywords": [
     "mail",
