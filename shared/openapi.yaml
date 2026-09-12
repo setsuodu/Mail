@@ -1,0 +1,378 @@
+openapi: 3.0.3
+info:
+  title: Mail API
+  version: 1.0.0
+  description: In-game mail / compensation service – player inbox and admin send APIs
+servers:
+  - url: /api/v1
+    description: API base
+
+paths:
+  /inbox:
+    get:
+      summary: List player inbox (non-deleted)
+      operationId: listInbox
+      security:
+        - BearerJwt: []
+      parameters:
+        - name: includeClaimed
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Paged inbox
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InboxListResponse'
+        '401':
+          description: Unauthorized
+
+  /inbox/{id}/read:
+    post:
+      summary: Mark mail as read
+      operationId: markRead
+      security:
+        - BearerJwt: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailItem'
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+
+  /inbox/{id}/claim:
+    post:
+      summary: Claim attachments (idempotent)
+      operationId: claimMail
+      security:
+        - BearerJwt: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Claimed (or already claimed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '404':
+          description: Not found
+        '410':
+          description: Expired
+        '401':
+          description: Unauthorized
+
+  /inbox/{id}:
+    delete:
+      summary: Soft-delete mail from inbox
+      operationId: deleteMail
+      security:
+        - BearerJwt: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+
+  /admin/mails:
+    post:
+      summary: Create and send mail (GM / ops)
+      operationId: adminCreateMail
+      security:
+        - AdminApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateMailRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMailSummary'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    get:
+      summary: List mails (admin)
+      operationId: adminListMails
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paged list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMailListResponse'
+        '401':
+          description: Unauthorized
+
+  /admin/mails/{id}:
+    get:
+      summary: Get mail detail (admin)
+      operationId: adminGetMail
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMailDetail'
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+
+components:
+  securitySchemes:
+    BearerJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Player JWT from MP (HS256, shared secret)
+    AdminApiKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Api-Key
+      description: Admin / Dashboard / GM API key
+
+  schemas:
+    MailAttachment:
+      type: object
+      required: [itemId, count]
+      properties:
+        itemId:
+          type: string
+          description: Game item / currency id
+        count:
+          type: integer
+          minimum: 1
+        meta:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    MailItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        mailId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/MailAttachment'
+        isRead:
+          type: boolean
+        isClaimed:
+          type: boolean
+        expireAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        claimedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    InboxListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MailItem'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    ClaimResponse:
+      type: object
+      properties:
+        mailItemId:
+          type: string
+          format: uuid
+        alreadyClaimed:
+          type: boolean
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/MailAttachment'
+        claimedAt:
+          type: string
+          format: date-time
+
+    AdminCreateMailRequest:
+      type: object
+      required: [projectId, title, content]
+      properties:
+        projectId:
+          type: string
+          description: Game id
+        title:
+          type: string
+        content:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/MailAttachment'
+        targetUserIds:
+          type: array
+          items:
+            type: string
+          description: Empty or omit = broadcast template (fan-out on claim/list is not auto; prefer explicit list for v1)
+        expireAt:
+          type: string
+          format: date-time
+          nullable: true
+        senderName:
+          type: string
+          nullable: true
+          description: Display name, e.g. System / GM
+
+    AdminMailSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+        title:
+          type: string
+        targetCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        expireAt:
+          type: string
+          format: date-time
+          nullable: true
+        senderName:
+          type: string
+          nullable: true
+
+    AdminMailDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdminMailSummary'
+        - type: object
+          properties:
+            content:
+              type: string
+            attachments:
+              type: array
+              items:
+                $ref: '#/components/schemas/MailAttachment'
+            targetUserIds:
+              type: array
+              items:
+                type: string
+
+    AdminMailListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminMailSummary'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string

@@ -1,0 +1,23 @@
+{
+  "name": "com.setsuodu.mail",
+  "version": "1.0.0",
+  "displayName": "Mail",
+  "description": "In-game mail / compensation client for Unity. Fetch inbox, mark read, claim attachments, delete.",
+  "unity": "2021.3",
+  "unityRelease": "0f1",
+  "documentationUrl": "https://github.com/LongLongGames/Mail",
+  "changelogUrl": "https://github.com/LongLongGames/Mail/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/LongLongGames/Mail/blob/main/LICENSE",
+  "license": "MIT",
+  "keywords": [
+    "mail",
+    "inbox",
+    "compensation",
+    "reward"
+  ],
+  "author": {
+    "name": "Setsuodu / LongLongGames",
+    "url": "https://github.com/LongLongGames"
+  },
+  "dependencies": {}
+}
