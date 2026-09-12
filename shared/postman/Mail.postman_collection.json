@@ -1,0 +1,369 @@
+{
+  "info": {
+    "name": "Mail API",
+    "description": "Import env Mail Local. Generated for Mail 1.0.0 — also import shared/openapi.yaml via Postman Import.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Happy path",
+      "item": [
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "Admin Create Mail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});",
+                  "",
+                  "const j = pm.response.json();",
+                  "pm.environment.set('mailId', j.id);",
+                  "pm.test('has id', () => pm.expect(j.id).to.be.ok);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Api-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"title\": \"Postman mail\",\n  \"content\": \"from postman\",\n  \"attachments\": [\n    {\n      \"itemId\": \"gem\",\n      \"count\": 5\n    }\n  ],\n  \"targetUserIds\": [\n    \"{{userId}}\"\n  ],\n  \"senderName\": \"Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/mails"
+          }
+        },
+        {
+          "name": "Admin List Mails",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Admin-Api-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/mails?projectId={{projectId}}"
+          }
+        },
+        {
+          "name": "Inbox List",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const userId = pm.environment.get('userId');",
+                  "const secret = pm.environment.get('jwtSecret');",
+                  "function b64url(buf) {",
+                  "  return CryptoJS.enc.Base64.stringify(buf).replace(/=+$/,'').replace(/\\+/g,'-').replace(/\\//g,'_');",
+                  "}",
+                  "const header = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({alg:'HS256',typ:'JWT'})));",
+                  "const now = Math.floor(Date.now()/1000);",
+                  "const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({sub:userId,iat:now,exp:now+3600})));",
+                  "const sig = b64url(CryptoJS.HmacSHA256(header + '.' + payload, secret));",
+                  "pm.environment.set('jwt', header + '.' + payload + '.' + sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});",
+                  "",
+                  "const j = pm.response.json();",
+                  "if (j.items && j.items.length) {",
+                  "  pm.environment.set('userMailId', j.items[0].id);",
+                  "}",
+                  "pm.test('items array', () => pm.expect(j.items).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/inbox?projectId={{projectId}}&includeClaimed=true"
+          }
+        },
+        {
+          "name": "Mark Read",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const userId = pm.environment.get('userId');",
+                  "const secret = pm.environment.get('jwtSecret');",
+                  "function b64url(buf) {",
+                  "  return CryptoJS.enc.Base64.stringify(buf).replace(/=+$/,'').replace(/\\+/g,'-').replace(/\\//g,'_');",
+                  "}",
+                  "const header = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({alg:'HS256',typ:'JWT'})));",
+                  "const now = Math.floor(Date.now()/1000);",
+                  "const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({sub:userId,iat:now,exp:now+3600})));",
+                  "const sig = b64url(CryptoJS.HmacSHA256(header + '.' + payload, secret));",
+                  "pm.environment.set('jwt', header + '.' + payload + '.' + sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/inbox/{{userMailId}}/read?projectId={{projectId}}"
+          }
+        },
+        {
+          "name": "Claim",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const userId = pm.environment.get('userId');",
+                  "const secret = pm.environment.get('jwtSecret');",
+                  "function b64url(buf) {",
+                  "  return CryptoJS.enc.Base64.stringify(buf).replace(/=+$/,'').replace(/\\+/g,'-').replace(/\\//g,'_');",
+                  "}",
+                  "const header = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({alg:'HS256',typ:'JWT'})));",
+                  "const now = Math.floor(Date.now()/1000);",
+                  "const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({sub:userId,iat:now,exp:now+3600})));",
+                  "const sig = b64url(CryptoJS.HmacSHA256(header + '.' + payload, secret));",
+                  "pm.environment.set('jwt', header + '.' + payload + '.' + sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/inbox/{{userMailId}}/claim?projectId={{projectId}}"
+          }
+        },
+        {
+          "name": "Delete",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const userId = pm.environment.get('userId');",
+                  "const secret = pm.environment.get('jwtSecret');",
+                  "function b64url(buf) {",
+                  "  return CryptoJS.enc.Base64.stringify(buf).replace(/=+$/,'').replace(/\\+/g,'-').replace(/\\//g,'_');",
+                  "}",
+                  "const header = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({alg:'HS256',typ:'JWT'})));",
+                  "const now = Math.floor(Date.now()/1000);",
+                  "const payload = b64url(CryptoJS.enc.Utf8.parse(JSON.stringify({sub:userId,iat:now,exp:now+3600})));",
+                  "const sig = b64url(CryptoJS.HmacSHA256(header + '.' + payload, secret));",
+                  "pm.environment.set('jwt', header + '.' + payload + '.' + sig);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 204', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/inbox/{{userMailId}}?projectId={{projectId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bad path",
+      "item": [
+        {
+          "name": "Admin no key 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"projectId\":\"default\",\"title\":\"x\",\"content\":\"y\",\"targetUserIds\":[\"u\"]}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/mails"
+          }
+        },
+        {
+          "name": "Inbox no auth 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('json body or empty', function () {",
+                  "  if (pm.response.code !== 204 && pm.response.text()) {",
+                  "    pm.response.to.be.json;",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/inbox?projectId={{projectId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

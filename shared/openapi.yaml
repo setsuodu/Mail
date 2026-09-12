@@ -4,10 +4,29 @@ info:
   version: 1.0.0
   description: In-game mail / compensation service – player inbox and admin send APIs
 servers:
+  - url: http://localhost:12081/api/v1
+    description: Local Docker Desktop
   - url: /api/v1
-    description: API base
+    description: Relative (gateway)
 
 paths:
+  /health:
+    get:
+      summary: Liveness
+      operationId: health
+      servers:
+        - url: http://localhost:12081
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
   /inbox:
     get:
       summary: List player inbox (non-deleted)

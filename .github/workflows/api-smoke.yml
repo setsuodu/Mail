@@ -1,0 +1,76 @@
+name: API Smoke
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/api-smoke.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/api-smoke.yml"
+  workflow_dispatch:
+
+# Note: path filters apply to branch pushes; tag pushes of v* still run when files match.
+# For tag-only with no path change, use workflow_dispatch or drop paths on tag via separate workflow.
+
+concurrency:
+  group: api-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Compose + Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare .env
+        working-directory: server
+        run: |
+          cp -n .env.example .env 2>/dev/null || cp .env.example .env
+
+      - name: Docker compose up --build
+        working-directory: server
+        run: |
+          docker compose up --build -d
+          for i in $(seq 1 90); do
+            if curl -sf "http://127.0.0.1:12081/health" >/dev/null; then
+              echo "OK health"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs || true
+          exit 1
+
+      - name: Smoke test
+        working-directory: server
+        env:
+          BASE: http://127.0.0.1:12081
+          ADMIN_KEY: dev-admin-key
+          JWT_SECRET: dev-jwt-secret-shared-with-mp
+        run: python scripts/smoke_test.py
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mail-smoke-${{ github.run_id }}-${{ github.sha }}
+          path: server/test-results/
+          retention-days: 30
+
+      - name: Teardown
+        if: always()
+        working-directory: server
+        run: docker compose down -v || true
