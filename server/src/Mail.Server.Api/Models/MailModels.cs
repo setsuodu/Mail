@@ -91,13 +91,4 @@ public sealed class ErrorResponse
     public required string Error { get; set; }
 }
 
-public sealed class JwtPayloadLite
-{
-    [System.Text.Json.Serialization.JsonPropertyName("sub")]
-    public string? Sub { get; set; }
-    [System.Text.Json.Serialization.JsonPropertyName("user_id")]
-    public string? UserId { get; set; }
-    [System.Text.Json.Serialization.JsonPropertyName("exp")]
-    public long Exp { get; set; }
-}
 
