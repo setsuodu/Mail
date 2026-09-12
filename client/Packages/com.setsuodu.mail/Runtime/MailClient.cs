@@ -39,9 +39,22 @@ namespace Setsuodu.Mail
             Debug.Log($"[Mail] up  url={serverBaseUrl}  project={projectId}");
         }
 
+        /// <summary>Optional: override URL / project after Awake (sample / runtime).</summary>
+        public void Configure(string baseUrl, string project, bool debug = true)
+        {
+            if (!string.IsNullOrEmpty(baseUrl))
+                serverBaseUrl = baseUrl.TrimEnd('/');
+            if (!string.IsNullOrEmpty(project))
+                projectId = project;
+            debugHttp = debug;
+            _api = new MailApiClient(serverBaseUrl, debugHttp);
+        }
+
         /// <summary>Call after MP login with the player JWT.</summary>
         public void SetJwt(string jwt)
         {
+            if (_api == null)
+                _api = new MailApiClient(serverBaseUrl, debugHttp);
             _api.SetJwt(jwt);
         }
 

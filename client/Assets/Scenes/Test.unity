@@ -221,6 +221,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1252816022}
   - component: {fileID: 1252816021}
+  - component: {fileID: 1252816023}
   m_Layer: 0
   m_Name: MailClient
   m_TagString: Untagged
@@ -241,7 +242,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Setsuodu.Mail::Setsuodu.Mail.MailClient
   serverBaseUrl: http://localhost:12081
-  projectId: match3
+  projectId: default
   debugHttp: 1
 --- !u!4 &1252816022
 Transform:
@@ -258,6 +259,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1252816023
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1252816020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6b14fd328776bc429cf01521a420be1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Setsuodu.Mail.Samples.MailInboxSample
+  serverBaseUrl: http://localhost:12081
+  projectId: default
+  adminApiKey: dev-admin-key
+  jwtSecret: dev-jwt-secret-shared-with-mp
+  sampleUserId: sample-user-1
+  seedAdminMailKey: 282
+  refreshKey: 283
+  markFirstReadKey: 284
+  claimFirstKey: 285
+  deleteFirstKey: 286
+  runFullFlowKey: 287
 --- !u!1 &1634023676
 GameObject:
   m_ObjectHideFlags: 0

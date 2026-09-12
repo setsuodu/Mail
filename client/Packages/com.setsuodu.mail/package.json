@@ -19,5 +19,12 @@
     "name": "Setsuodu",
     "url": "https://github.com/setsuodu"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "samples": [
+    {
+      "displayName": "Basic Example",
+      "description": "End-to-end Mail API: admin seed, JWT inbox, read, claim, delete. Requires local mail-server on :12081.",
+      "path": "Samples~/BasicExample"
+    }
+  ]
 }
