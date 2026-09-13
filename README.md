@@ -75,9 +75,8 @@ Mail/
 
 | Tag | 触发工作流 | 产物 |
 |-----|------------|------|
-| `client-vX.Y.Z` | release-client | OpenUPM 客户端包 |
-| `server-vX.Y.Z` | release-server | GHCR 镜像 `mail-server:X.Y.Z` |
-| `vX.Y.Z` | release-all | 客户端 + 服务端联合发布 |
+| `com.setsuodu.mail/vX.Y.Z` | 外部触发 | OpenUPM 客户端包 |
+| `server/v1.0.0` | release-server | GHCR 镜像 |
 
 ---
 
