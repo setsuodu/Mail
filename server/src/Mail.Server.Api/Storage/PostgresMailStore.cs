@@ -17,6 +17,26 @@ public sealed class PostgresMailStore : IMailStore
     {
         await using var conn = await _ds.OpenConnectionAsync(ct);
 
+        // 懒分发全服邮件到当前玩家
+        await using (var fan = conn.CreateCommand())
+        {
+            fan.CommandText = """
+                INSERT INTO user_mails (id, mail_id, project_id, user_id)
+                SELECT gen_random_uuid(), m.id, m.project_id, @user_id
+                FROM mails m
+                WHERE m.project_id = @project_id
+                  AND m.is_broadcast = TRUE
+                  AND (m.expire_at IS NULL OR m.expire_at > NOW())
+                  AND NOT EXISTS (
+                      SELECT 1 FROM user_mails um
+                      WHERE um.mail_id = m.id AND um.user_id = @user_id
+                  )
+                """;
+            fan.Parameters.AddWithValue("project_id", projectId);
+            fan.Parameters.AddWithValue("user_id", userId);
+            await fan.ExecuteNonQueryAsync(ct);
+        }
+
         var claimedFilter = includeClaimed ? "" : "AND um.is_claimed = FALSE";
         var where = $"""
             um.project_id = @project_id AND um.user_id = @user_id AND um.is_deleted = FALSE
@@ -178,9 +198,10 @@ public sealed class PostgresMailStore : IMailStore
 
         await using var insertMail = conn.CreateCommand();
         insertMail.Transaction = tx;
+        var isBroadcast = request.Broadcast;
         insertMail.CommandText = """
-            INSERT INTO mails (id, project_id, title, content, attachments, sender_name, expire_at, created_by)
-            VALUES (@id, @project_id, @title, @content, @attachments, @sender_name, @expire_at, @created_by)
+            INSERT INTO mails (id, project_id, title, content, attachments, sender_name, expire_at, created_by, is_broadcast)
+            VALUES (@id, @project_id, @title, @content, @attachments, @sender_name, @expire_at, @created_by, @is_broadcast)
             """;
         insertMail.Parameters.AddWithValue("id", mailId);
         insertMail.Parameters.AddWithValue("project_id", request.ProjectId);
@@ -190,7 +211,24 @@ public sealed class PostgresMailStore : IMailStore
         insertMail.Parameters.AddWithValue("sender_name", (object?)request.SenderName ?? DBNull.Value);
         insertMail.Parameters.AddWithValue("expire_at", (object?)request.ExpireAt ?? DBNull.Value);
         insertMail.Parameters.AddWithValue("created_by", (object?)createdBy ?? DBNull.Value);
+        insertMail.Parameters.AddWithValue("is_broadcast", isBroadcast);
         await insertMail.ExecuteNonQueryAsync(ct);
+
+        if (isBroadcast)
+        {
+            await tx.CommitAsync(ct);
+            return new AdminMailSummary
+            {
+                Id = mailId,
+                ProjectId = request.ProjectId,
+                Title = request.Title,
+                TargetCount = 0,
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpireAt = request.ExpireAt,
+                SenderName = request.SenderName,
+                IsBroadcast = true
+            };
+        }
 
         foreach (var uid in targets)
         {
@@ -218,7 +256,8 @@ public sealed class PostgresMailStore : IMailStore
             TargetCount = targets.Count,
             CreatedAt = DateTimeOffset.UtcNow,
             ExpireAt = request.ExpireAt,
-            SenderName = request.SenderName
+            SenderName = request.SenderName,
+            IsBroadcast = false
         };
     }
 
@@ -237,7 +276,8 @@ public sealed class PostgresMailStore : IMailStore
         await using var listCmd = conn.CreateCommand();
         listCmd.CommandText = $"""
             SELECT m.id, m.project_id, m.title, m.created_at, m.expire_at, m.sender_name,
-                   (SELECT COUNT(*) FROM user_mails um WHERE um.mail_id = m.id) AS target_count
+                   (SELECT COUNT(*) FROM user_mails um WHERE um.mail_id = m.id) AS target_count,
+                   m.is_broadcast
             FROM mails m
             {where}
             ORDER BY m.created_at DESC
@@ -260,7 +300,8 @@ public sealed class PostgresMailStore : IMailStore
                 CreatedAt = reader.GetFieldValue<DateTimeOffset>(3),
                 ExpireAt = reader.IsDBNull(4) ? null : reader.GetFieldValue<DateTimeOffset>(4),
                 SenderName = reader.IsDBNull(5) ? null : reader.GetString(5),
-                TargetCount = Convert.ToInt32(reader.GetInt64(6))
+                TargetCount = Convert.ToInt32(reader.GetInt64(6)),
+                IsBroadcast = !reader.IsDBNull(7) && reader.GetBoolean(7)
             });
         }
 

@@ -46,6 +46,8 @@ public sealed class AdminCreateMailRequest
     public List<string>? TargetUserIds { get; set; }
     public DateTimeOffset? ExpireAt { get; set; }
     public string? SenderName { get; set; }
+    /// <summary>true = 全服补偿，拉取收件箱时懒分发到玩家。</summary>
+    public bool Broadcast { get; set; }
 }
 
 public sealed class AdminMailSummary
@@ -57,6 +59,7 @@ public sealed class AdminMailSummary
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ExpireAt { get; set; }
     public string? SenderName { get; set; }
+    public bool IsBroadcast { get; set; }
 }
 
 public sealed class AdminMailDetail
@@ -71,6 +74,7 @@ public sealed class AdminMailDetail
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ExpireAt { get; set; }
     public string? SenderName { get; set; }
+    public bool IsBroadcast { get; set; }
 }
 
 public sealed class AdminMailListResponse

@@ -10,6 +10,7 @@ name: mail
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mail}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mail}
@@ -43,6 +44,7 @@ services:
     build:
       context: ..
       dockerfile: server/src/Mail.Server.Api/Dockerfile
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy

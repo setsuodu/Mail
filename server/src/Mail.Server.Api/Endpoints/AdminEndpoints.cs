@@ -33,9 +33,10 @@ public static class AdminEndpoints
             return Results.Json(new ErrorResponse { Error = "projectId, title, content are required" }, AppJsonContext.Default.ErrorResponse, statusCode: StatusCodes.Status400BadRequest);
         }
 
-        if (body.TargetUserIds is null || body.TargetUserIds.Count == 0)
+        var isBroadcast = body.Broadcast;
+        if (!isBroadcast && (body.TargetUserIds is null || body.TargetUserIds.Count == 0))
         {
-            return Results.Json(new ErrorResponse { Error = "targetUserIds required in v1 (explicit fan-out)" }, AppJsonContext.Default.ErrorResponse, statusCode: StatusCodes.Status400BadRequest);
+            return Results.Json(new ErrorResponse { Error = "targetUserIds required unless broadcast=true" }, AppJsonContext.Default.ErrorResponse, statusCode: StatusCodes.Status400BadRequest);
         }
 
         var summary = await store.CreateMailAsync(body, createdBy: "admin", http.RequestAborted);
