@@ -55,7 +55,7 @@ services:
     environment:
       - ConnectionStrings__Postgres=${ConnectionStrings__Postgres:-Host=db;Port=5432;Database=mail;Username=mail;Password=mail}
       - Auth__AdminApiKey=${AUTH_ADMIN_API_KEY:-change-me-admin}
-      - Auth__JwtSecret=${AUTH_JWT_SECRET:-change-me-shared-with-mp}
+      - Auth__JwtSecret=${JWT_SECRET:-change_me_to_a_long_random_secret}
       - DefaultProjectId=${DEFAULT_PROJECT_ID:-default}
       - ASPNETCORE_URLS=http://+:8080
     ports:
